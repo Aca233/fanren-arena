@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "types": ["vite/client"],
+    "paths": {
+      "@ecs/*": ["./src/ecs/*"],
+      "@components/*": ["./src/components/*"],
+      "@systems/*": ["./src/systems/*"],
+      "@schemas/*": ["./src/schemas/*"],
+      "@artifacts/*": ["./src/artifacts/*"],
+      "@store/*": ["./src/store/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@physics/*": ["./src/physics/*"],
+      "@ai/*": ["./src/ai/*"],
+      "@vfx/*": ["./src/vfx/*"]
+    }
+  },
+  "include": ["src"]
+}

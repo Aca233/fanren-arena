@@ -1,0 +1,142 @@
+[
+  {
+    "id": "qinggang_sword",
+    "name": "青钢剑",
+    "tier": "low",
+    "tags": ["sword", "dao"],
+    "weight": 1.5,
+    "spirituality": 200,
+    "speed": 450,
+    "radius": 10,
+    "contactDamage": 15,
+    "color": "#4488ff",
+    "icon": "🗡️"
+  },
+  {
+    "id": "lieyang_bead",
+    "name": "烈阳珠",
+    "tier": "mid",
+    "tags": ["bead", "fire"],
+    "weight": 3.0,
+    "spirituality": 400,
+    "speed": 320,
+    "radius": 16,
+    "contactDamage": 25,
+    "behaviors": [
+      {
+        "trigger": "onHit",
+        "action": "Explode",
+        "actionParams": { "radius": 60, "damage": 80 }
+      }
+    ],
+    "color": "#ff6622",
+    "icon": "🔥"
+  },
+  {
+    "id": "bingxin_needle",
+    "name": "冰心针",
+    "tier": "low",
+    "tags": ["needle", "ice"],
+    "weight": 0.3,
+    "spirituality": 80,
+    "speed": 900,
+    "radius": 6,
+    "contactDamage": 8,
+    "color": "#aaddff",
+    "icon": "❄️"
+  },
+  {
+    "id": "jingang_shield",
+    "name": "金刚盾",
+    "tier": "mid",
+    "tags": ["shield", "dao"],
+    "weight": 12.0,
+    "spirituality": 1200,
+    "speed": 180,
+    "radius": 26,
+    "contactDamage": 5,
+    "color": "#d4af37",
+    "icon": "🛡️"
+  },
+  {
+    "id": "youming_flag",
+    "name": "幽冥幡",
+    "tier": "mid",
+    "tags": ["flag", "ghost"],
+    "weight": 2.5,
+    "spirituality": 350,
+    "speed": 280,
+    "radius": 20,
+    "contactDamage": 10,
+    "aura": {
+      "radius": 80,
+      "effect": "slow",
+      "strength": 3
+    },
+    "color": "#8833cc",
+    "icon": "🏴"
+  },
+  {
+    "id": "jinfuzi_blade",
+    "name": "金蚨子母刃",
+    "tier": "high",
+    "tags": ["sword", "dao"],
+    "weight": 4.0,
+    "spirituality": 600,
+    "speed": 380,
+    "radius": 14,
+    "contactDamage": 20,
+    "behaviors": [
+      {
+        "trigger": "onDistance",
+        "triggerValue": 50,
+        "action": "Spawn",
+        "actionParams": { "count": 3, "childId": "bingxin_needle" }
+      }
+    ],
+    "color": "#ffcc44",
+    "icon": "⚜️"
+  },
+  {
+    "id": "xutian_cauldron",
+    "name": "虚天鼎",
+    "tier": "supreme",
+    "tags": ["cauldron", "space"],
+    "weight": 50.0,
+    "spirituality": 3000,
+    "speed": 100,
+    "radius": 36,
+    "contactDamage": 0,
+    "aura": {
+      "radius": 150,
+      "effect": "gravity",
+      "strength": 7,
+      "affectsTags": ["sword", "needle", "bead", "whip", "flag"]
+    },
+    "color": "#228866",
+    "icon": "🏺"
+  },
+  {
+    "id": "zhangtian_bottle",
+    "name": "掌天瓶",
+    "tier": "supreme",
+    "tags": ["cauldron", "time"],
+    "weight": 8.0,
+    "spirituality": 800,
+    "speed": 150,
+    "radius": 22,
+    "contactDamage": 0,
+    "scripts": [
+      {
+        "event": "onSpawn",
+        "code": "world.globals.timeScale = 0.2"
+      },
+      {
+        "event": "onDestroy",
+        "code": "world.globals.timeScale = 1.0"
+      }
+    ],
+    "color": "#cc8833",
+    "icon": "⏳"
+  }
+]
