@@ -61,6 +61,7 @@ export default function Sandbox({ onBack }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const store = useBattleStore()
   const [swordCount, setSwordCount] = useState(72)
+  const [guardRatio, setGuardRatio] = useState(100) // 护体比例 %
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -235,8 +236,8 @@ export default function Sandbox({ onBack }: Props) {
       return
     }
     _swordFormCtrlId = _swordFormSys.spawnSwords(_world, _playerId, swordCount)
-    store.addLog(`祭出【青竹蜂云剑】${swordCount}剑 —— 游鱼护体`, '#d4af37')
-    store.addLog('F 切换形态 | 再按 T 回收', '#aa8820')
+    _swordFormSys.setGuardRatio(_world, _swordFormCtrlId, guardRatio / 100)
+    store.addLog(`祭出【青竹蜂云剑】${swordCount}剑 · 护${guardRatio}%`, '#d4af37')
   }
 
   const onSwordCountChange = (val: number) => {
@@ -293,8 +294,9 @@ export default function Sandbox({ onBack }: Props) {
           <button onClick={() => { for (let i = 0; i < 5; i++) spawnDummy() }} style={ab('#3a1a0a')}>木桩 ×5</button>
           <button onClick={spawnSwarm} style={ab('#2a3a0a')}>噬金虫云 (E)</button>
           <button onClick={spawnBeast} style={ab('#1a2a3a')}>灵兽 (R)</button>
-          <button onClick={spawnSwordFormation} style={ab('#3a2a0a')}>
-            {_swordFormCtrlId !== -1 ? '收回蜂云剑 (T)' : '青竹蜂云剑 (T)'}
+          <button onClick={spawnSwordFormation} style={{ ...ab('#3a2a0a'), display: 'flex', alignItems: 'center', gap: '0.3rem', justifyContent: 'center' }}>
+            <img src="/qingzhu-sword.svg" alt="" style={{ width: 16, height: 16 }} />
+            {_swordFormCtrlId !== -1 ? '收回蜂云剑' : '祭出蜂云剑'}
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.6rem' }}>
             <span style={{ color: '#aa8820' }}>{swordCount}剑</span>
@@ -303,11 +305,38 @@ export default function Sandbox({ onBack }: Props) {
               style={{ flex: 1, accentColor: '#d4af37', height: 4 }} />
           </div>
 
-          {_swordFormCtrlId !== -1 && (
-            <div style={{ fontSize: '0.6rem', color: '#d4af37', padding: '0.15rem 0.3rem', background: '#1a1a0a', borderRadius: 3, border: '1px solid #d4af3733' }}>
-              ⚔ {getSwordMode()} | F 切换
+          {_swordFormCtrlId !== -1 && (<>
+            <div style={{ fontSize: '0.6rem', color: '#d4af37', padding: '0.15rem 0.3rem', background: '#1a1a0a', borderRadius: 3, border: '1px solid #d4af3733', textAlign: 'center' }}>
+              {getSwordMode()}
             </div>
-          )}
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <button onClick={() => _swordFormSys?.setMode(_world!, _swordFormCtrlId, 'guardian')}
+                style={{ ...modeBtn, background: getSwordMode().includes('护体') ? '#1a3a1a' : '#141418', borderColor: getSwordMode().includes('护体') ? '#44aa44' : '#2a2a3a' }}>
+                护体
+              </button>
+              <button onClick={() => _swordFormSys?.setMode(_world!, _swordFormCtrlId, 'assault')}
+                style={{ ...modeBtn, background: getSwordMode().includes('绞杀') ? '#3a1a0a' : '#141418', borderColor: getSwordMode().includes('绞杀') ? '#cc6622' : '#2a2a3a' }}>
+                绞杀
+              </button>
+              <button onClick={() => _swordFormSys?.setMode(_world!, _swordFormCtrlId, 'domain')}
+                style={{ ...modeBtn, background: getSwordMode().includes('剑阵') ? '#2a1a0a' : '#141418', borderColor: getSwordMode().includes('剑阵') ? '#d4af37' : '#2a2a3a' }}>
+                剑阵
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.55rem', marginTop: '0.15rem' }}>
+              <span style={{ color: '#44aa44', whiteSpace: 'nowrap' }}>护{guardRatio}%</span>
+              <input type="range" min={0} max={100} step={10} value={guardRatio}
+                onChange={e => {
+                  const v = Number(e.target.value)
+                  setGuardRatio(v)
+                  if (_world && _swordFormSys && _swordFormCtrlId !== -1) {
+                    _swordFormSys.setGuardRatio(_world, _swordFormCtrlId, v / 100)
+                  }
+                }}
+                style={{ flex: 1, accentColor: '#44aa44', height: 3 }} />
+              <span style={{ color: '#cc6622', whiteSpace: 'nowrap' }}>攻{100 - guardRatio}%</span>
+            </div>
+          </>)}
 
           <div style={st}>⚔ 法宝 (1~5)</div>
           {SLOTS.slice(0, 5).map((s, i) => s && (
@@ -338,7 +367,6 @@ export default function Sandbox({ onBack }: Props) {
             右键 遁/指派追击{'\n'}
             Shift+左键 划线绕后{'\n'}
             1~5 祭出法宝{'\n'}
-            T 青竹蜂云剑 | F 切换形态{'\n'}
             E 虫云 | R 灵兽
           </div>
         </div>
@@ -370,3 +398,4 @@ function Bar({ label, pct, color, value, warn }: { label: string; pct: number; c
 function tb(bg: string) { return { padding: '0.2rem 0.5rem', background: bg, border: '1px solid #2a2a3a', borderRadius: 3, color: '#c0b8d0', fontSize: '0.7rem', cursor: 'pointer' } as const }
 function ab(bg: string) { return { padding: '0.3rem 0.45rem', background: bg, border: '1px solid #3a3a4a', borderRadius: 4, color: '#e8e0d0', fontSize: '0.7rem', cursor: 'pointer', width: '100%' } as const }
 const st = { fontSize: '0.6rem', color: '#556', borderBottom: '1px solid #2a2a3a', paddingBottom: '0.12rem', marginTop: '0.2rem', letterSpacing: '0.08em' } as const
+const modeBtn = { flex: 1, padding: '0.25rem', background: '#141418', border: '1px solid #2a2a3a', borderRadius: 3, color: '#c0b8a0', fontSize: '0.6rem', cursor: 'pointer', textAlign: 'center' as const } as const

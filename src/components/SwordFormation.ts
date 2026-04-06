@@ -1,47 +1,64 @@
 import type { Component } from '../ecs/types'
 
 export type FormationMode = 'guardian' | 'assault' | 'domain'
+export type DomainPhase = 'none' | 'deploying' | 'active' | 'collapsing'
 
 /**
  * SwordFormation 组件 —— 青竹蜂云剑集群控制器
  *
- * 挂载在"剑阵主控实体"上，管理 72 把飞剑子实体
  * 三种形态：
  *   guardian — 游鱼护体（防御环绕+自动拦截）
  *   assault  — 蜂云绞杀（Boids追踪+水滴石穿）
- *   domain   — 大庚剑阵（领域结界+剑丝切割+禁遁）
+ *   domain   — 大庚剑阵（三阶段：布阵→绞杀→收阵/破阵）
  */
 export interface SwordFormationComponent extends Component {
   readonly type: 'SwordFormation'
-  /** 主人实体 ID */
   ownerId: number
-  /** 当前形态 */
   mode: FormationMode
-  /** 形态切换冷却（秒） */
   switchCooldown: number
   switchCooldownMax: number
-  /** 剑阵子实体 ID 列表 */
   swordIds: number[]
-  /** 剑阵总数 */
   swordCount: number
-  /** 防御圈半径（guardian 模式） */
   guardRadius: number
-  /** 追踪目标 ID（assault 模式） */
+  /** 护体比例 0~1（其余剑投入攻击/剑阵） */
+  guardRatio: number
   assaultTargetId: number
-  /** 领域半径（domain 模式） */
+
+  // ── 大庚剑阵 ──
   domainRadius: number
-  /** 领域激活状态 */
-  domainActive: boolean
-  /** 领域存续时间 */
+  domainPhase: DomainPhase
   domainTimer: number
-  domainMaxDuration: number
-  /** 剑丝切割定时器 */
+  /** 阵心固定坐标（展开时锁定，不跟随角色） */
+  domainCenterX: number
+  domainCenterY: number
+  /** 布阵时间（无敌帧） */
+  deployDuration: number
+  /** 绞杀持续时间 */
+  activeDuration: number
+  /** 收阵/崩溃动画时间 */
+  collapseDuration: number
+  /** 阵眼生命值 */
+  coreHealth: number
+  coreHealthMax: number
+  /** 剑丝切割 */
   slashTimer: number
   slashInterval: number
-  /** 神识消耗（每秒） */
+  slashDamage: number
+  /** 当前帧的剑丝线段（供渲染用） */
+  swordSilks: { x1: number; y1: number; x2: number; y2: number; alpha: number }[]
+  /** 减速倍率 */
+  slowMultiplier: number
+  /** 是否被强行破阵 */
+  broken: boolean
+
+  // ── 消耗 ──
   divineDrainPerSec: number
-  /** 领域额外神识消耗 */
   domainDivineDrain: number
+  /** domain 初始法力消耗比例 */
+  domainManaCost: number
+
+  // ── 环境暗化 */
+  darkenAlpha: number
 }
 
 export function createSwordFormation(ownerId: number): SwordFormationComponent {
@@ -54,22 +71,34 @@ export function createSwordFormation(ownerId: number): SwordFormationComponent {
     swordIds: [],
     swordCount: 72,
     guardRadius: 55,
+    guardRatio: 1.0,
     assaultTargetId: -1,
-    domainRadius: 220,
-    domainActive: false,
+    domainRadius: 250,
+    domainPhase: 'none',
     domainTimer: 0,
-    domainMaxDuration: 8,
+    domainCenterX: 0,
+    domainCenterY: 0,
+    deployDuration: 1.5,
+    activeDuration: 15,
+    collapseDuration: 1.0,
+    coreHealth: 5000,
+    coreHealthMax: 5000,
     slashTimer: 0,
     slashInterval: 0.1,
+    slashDamage: 50,
+    swordSilks: [],
+    slowMultiplier: 0.4,
+    broken: false,
     divineDrainPerSec: 2,
     domainDivineDrain: 8,
+    domainManaCost: 0.5,
+    darkenAlpha: 0,
   }
 }
 
 /** 单剑拖尾组件 */
 export interface TrailComponent extends Component {
   readonly type: 'Trail'
-  /** 历史位置记录（最多 8 帧） */
   positions: { x: number; y: number }[]
   maxLength: number
   color: string

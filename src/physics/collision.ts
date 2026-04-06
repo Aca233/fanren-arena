@@ -116,6 +116,28 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
+// ── 射线/线段 vs 圆 ──────────────────────────
+
+/** 线段与圆的相交检测（剑丝切割用） */
+export function lineSegmentVsCircle(
+  x1: number, y1: number, x2: number, y2: number,
+  cx: number, cy: number, cr: number,
+): boolean {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const fx = x1 - cx
+  const fy = y1 - cy
+  const a = dx * dx + dy * dy
+  const b = 2 * (fx * dx + fy * dy)
+  const c = fx * fx + fy * fy - cr * cr
+  let discriminant = b * b - 4 * a * c
+  if (discriminant < 0) return false
+  discriminant = Math.sqrt(discriminant)
+  const t1 = (-b - discriminant) / (2 * a)
+  const t2 = (-b + discriminant) / (2 * a)
+  return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1) || (t1 < 0 && t2 > 1)
+}
+
 /** 将角度钳位到 canvas 边界 */
 export function clampToBounds(
   x: number, y: number, r: number, w: number, h: number,

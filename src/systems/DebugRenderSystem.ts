@@ -20,11 +20,16 @@ export class DebugRenderSystem implements System {
   private ctx: CanvasRenderingContext2D | null = null
   private width = 900
   private height = 580
+  private swordImg: HTMLImageElement | null = null
 
   setContext(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     this.ctx = ctx
     this.width = w
     this.height = h
+    // 预加载飞剑 SVG
+    const img = new Image()
+    img.src = new URL('/qingzhu-sword.svg', import.meta.url).href
+    img.onload = () => { this.swordImg = img }
   }
 
   update(world: World, _dt: number): void {
@@ -87,36 +92,142 @@ export class DebugRenderSystem implements System {
       ctx.fillText(aura.effect, tf.x, tf.y + aura.radius + 10)
     }
 
-    // 大庚剑阵结界
-    const domainCircle = world.globals.domainCircle as { x: number; y: number; radius: number; timer: number; maxDuration: number } | null
+    // ── 环境暗化 ──
+    const darken = (world.globals.domainDarken ?? 0) as number
+    if (darken > 0) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${darken})`
+      ctx.fillRect(0, 0, this.width, this.height)
+    }
+
+    // ── 顿帧（HitStop）—— 不跳帧，只暂停实体运动由系统处理 ──
+    const hitStop = (world.globals.hitStop ?? 0) as number
+    if (hitStop > 0) {
+      world.globals.hitStop = hitStop - _dt
+    }
+
+    // ── 大庚剑阵结界 ──
+    const domainCircle = world.globals.domainCircle as {
+      x: number; y: number; radius: number; timer: number; phase: string
+      swordSilks: { x1: number; y1: number; x2: number; y2: number; alpha: number }[]
+      deployDuration: number; activeDuration: number
+      coreHealth: number; coreHealthMax: number
+    } | null
     if (domainCircle) {
-      const pulse = 0.6 + Math.sin(domainCircle.timer * 4) * 0.15
+      const { x: cx, y: cy, radius: dr, timer, phase, swordSilks } = domainCircle
+      const pulse = 0.7 + Math.sin(timer * 3) * 0.3
+      const deployPct = phase === 'deploying' ? Math.min(1, timer / domainCircle.deployDuration) : 1
+
+      // ── 多层结界环 ──
+      // 外圈主界（粗发光）
       ctx.beginPath()
-      ctx.arc(domainCircle.x, domainCircle.y, domainCircle.radius, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(212, 175, 55, ${0.06 * pulse})`
+      ctx.arc(cx, cy, dr * deployPct, 0, Math.PI * 2)
+      const grad = ctx.createRadialGradient(cx, cy, dr * 0.7 * deployPct, cx, cy, dr * deployPct)
+      grad.addColorStop(0, 'rgba(30, 60, 20, 0)')
+      grad.addColorStop(0.7, `rgba(60, 120, 40, ${0.06 * pulse})`)
+      grad.addColorStop(1, `rgba(180, 160, 60, ${0.12 * pulse})`)
+      ctx.fillStyle = grad
       ctx.fill()
-      ctx.strokeStyle = `rgba(212, 175, 55, ${0.4 * pulse})`
-      ctx.lineWidth = 2
-      ctx.setLineDash([8, 4])
+
+      // 外圈线
+      ctx.strokeStyle = `rgba(180, 160, 60, ${0.6 * pulse * deployPct})`
+      ctx.lineWidth = 2.5
       ctx.stroke()
-      ctx.setLineDash([])
-      // 阵法纹路（旋转的内圈）
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 + domainCircle.timer * 0.8
-        const inner = domainCircle.radius * 0.4
-        const outer = domainCircle.radius * 0.85
+
+      // 中圈
+      ctx.beginPath()
+      ctx.arc(cx, cy, dr * 0.72 * deployPct, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(140, 200, 80, ${0.25 * pulse * deployPct})`
+      ctx.lineWidth = 1
+      ctx.stroke()
+
+      // 内圈
+      ctx.beginPath()
+      ctx.arc(cx, cy, dr * 0.4 * deployPct, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(200, 180, 60, ${0.2 * pulse * deployPct})`
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+
+      // ── 八卦阵纹 ──
+      if (deployPct > 0.3) {
+        const a8 = deployPct * (phase === 'active' ? 1 : 0.6)
+
+        // 八条辐射线（双色交替）
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + timer * 0.4
+          const inner = dr * 0.08
+          const outer = dr * 0.88 * deployPct
+          ctx.beginPath()
+          ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner)
+          ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer)
+          ctx.strokeStyle = i % 2 === 0
+            ? `rgba(200, 180, 60, ${0.35 * a8})`
+            : `rgba(100, 180, 60, ${0.2 * a8})`
+          ctx.lineWidth = i % 2 === 0 ? 1.5 : 1
+          ctx.stroke()
+        }
+
+        // 旋转弧段（太极意象）
+        for (let i = 0; i < 3; i++) {
+          const r = dr * (0.3 + i * 0.18) * deployPct
+          const startA = timer * (1.2 - i * 0.3) + i * 2.1
+          ctx.beginPath()
+          ctx.arc(cx, cy, r, startA, startA + Math.PI * 0.8)
+          ctx.strokeStyle = `rgba(180, 220, 80, ${0.25 * a8 * pulse})`
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+        }
+
+        // 阵眼核心光点
+        const coreGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 18)
+        coreGlow.addColorStop(0, `rgba(255, 240, 160, ${0.5 * pulse * a8})`)
+        coreGlow.addColorStop(1, 'rgba(255, 240, 160, 0)')
         ctx.beginPath()
-        ctx.moveTo(domainCircle.x + Math.cos(a) * inner, domainCircle.y + Math.sin(a) * inner)
-        ctx.lineTo(domainCircle.x + Math.cos(a) * outer, domainCircle.y + Math.sin(a) * outer)
-        ctx.strokeStyle = '#d4af3733'
-        ctx.lineWidth = 1
+        ctx.arc(cx, cy, 18, 0, Math.PI * 2)
+        ctx.fillStyle = coreGlow
+        ctx.fill()
+      }
+
+      // ── 剑丝（翠绿+金色渐变闪线）──
+      for (const silk of swordSilks) {
+        // 外层：宽的翠绿光晕
+        ctx.beginPath()
+        ctx.moveTo(silk.x1, silk.y1)
+        ctx.lineTo(silk.x2, silk.y2)
+        ctx.strokeStyle = `rgba(140, 220, 80, ${silk.alpha * 0.25})`
+        ctx.lineWidth = 5
+        ctx.stroke()
+        // 中层：金色
+        ctx.strokeStyle = `rgba(220, 200, 80, ${silk.alpha * 0.5})`
+        ctx.lineWidth = 2
+        ctx.stroke()
+        // 内层：白芯
+        ctx.strokeStyle = `rgba(255, 255, 240, ${silk.alpha * 0.9})`
+        ctx.lineWidth = 0.8
         ctx.stroke()
       }
-      // 剩余时间指示
-      ctx.fillStyle = '#d4af37aa'
-      ctx.font = '10px monospace'
+
+      // ── 阵眼血条 ──
+      if (phase === 'active') {
+        const barW = 70, barH = 4
+        const bx = cx - barW / 2, by = cy + dr + 6
+        const pct = domainCircle.coreHealth / domainCircle.coreHealthMax
+        ctx.fillStyle = '#0a0a0a88'
+        ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2)
+        const barGrad = ctx.createLinearGradient(bx, by, bx + barW * pct, by)
+        barGrad.addColorStop(0, pct > 0.5 ? '#88cc44' : '#cc8822')
+        barGrad.addColorStop(1, pct > 0.5 ? '#d4af37' : '#cc3333')
+        ctx.fillStyle = barGrad
+        ctx.fillRect(bx, by, barW * pct, barH)
+      }
+
+      // ── 状态文字 ──
+      const label = phase === 'deploying' ? `布阵中 ${(domainCircle.deployDuration - timer).toFixed(1)}s`
+        : phase === 'active' ? `大庚剑阵 ${(domainCircle.activeDuration - timer).toFixed(1)}s`
+        : '收阵…'
+      ctx.fillStyle = '#d4af37cc'
+      ctx.font = '11px monospace'
       ctx.textAlign = 'center'
-      ctx.fillText(`大庚剑阵 ${(domainCircle.maxDuration - domainCircle.timer).toFixed(1)}s`, domainCircle.x, domainCircle.y + domainCircle.radius + 14)
+      ctx.fillText(label, cx, cy + dr + 16)
     }
 
     // 飞剑拖尾
@@ -176,34 +287,29 @@ export class DebugRenderSystem implements System {
         ctx.shadowColor = glowColor
       }
 
-      // 主体：飞剑（有Trail组件）画剑形，其他画圆
+      // 主体：飞剑（有Trail组件）画SVG剑形，其他画圆
       const hasTrail = world.hasComponent(entity, 'Trail')
       if (hasTrail && radius <= 5) {
-        // ── 绘制剑形 ──
-        const len = 12
-        const w = 2.5
+        // ── 绘制飞剑（SVG 或 fallback）──
         ctx.save()
         ctx.translate(tf.x, tf.y)
-        ctx.rotate(tf.rotation)
-        // 剑身
-        ctx.beginPath()
-        ctx.moveTo(len, 0)           // 剑尖
-        ctx.lineTo(-len * 0.3, -w)   // 左刃
-        ctx.lineTo(-len * 0.5, 0)    // 剑柄凹口
-        ctx.lineTo(-len * 0.3, w)    // 右刃
-        ctx.closePath()
-        ctx.fillStyle = isInvincible ? '#ffffff' : color
-        ctx.fill()
-        ctx.strokeStyle = '#ffffffaa'
-        ctx.lineWidth = 0.5
-        ctx.stroke()
-        // 剑芒（尖端亮光）
-        ctx.beginPath()
-        ctx.moveTo(len, 0)
-        ctx.lineTo(len + 4, 0)
-        ctx.strokeStyle = glowColor ?? '#d4af37'
-        ctx.lineWidth = 1.5
-        ctx.stroke()
+        // SVG 剑尖朝左上（-135°），补偿到 tf.rotation 方向
+        ctx.rotate(tf.rotation + Math.PI * 0.75)
+        if (this.swordImg) {
+          const sw = 36, sh = 36
+          ctx.drawImage(this.swordImg, -sw / 2, -sh / 2, sw, sh)
+        } else {
+          // fallback 菱形
+          const len = 14, w = 3
+          ctx.beginPath()
+          ctx.moveTo(0, -len)
+          ctx.lineTo(-w, len * 0.3)
+          ctx.lineTo(0, len * 0.5)
+          ctx.lineTo(w, len * 0.3)
+          ctx.closePath()
+          ctx.fillStyle = isInvincible ? '#ffffff' : color
+          ctx.fill()
+        }
         ctx.restore()
       } else {
         // ── 普通圆体 ──
@@ -252,17 +358,17 @@ export class DebugRenderSystem implements System {
         ctx.fillText(label, tf.x, tf.y - radius - 5)
       }
 
-      // 血条
+      // 血条（只对非飞剑实体显示）
       const hp = world.getComponent<HealthComponent>(entity, 'Health')
-      if (hp) {
+      if (hp && !hasTrail) {
         this._drawBar(ctx, tf.x, tf.y + radius + 4, radius * 2.4, 4,
           hp.current / hp.max,
           hp.current / hp.max > 0.5 ? '#44cc44' : hp.current / hp.max > 0.25 ? '#ccaa22' : '#cc3333')
       }
 
-      // 灵性条（法宝）
+      // 灵性条（只对非飞剑法宝显示）
       const sp = world.getComponent<SpiritualityComponent>(entity, 'Spirituality')
-      if (sp) {
+      if (sp && !hasTrail) {
         this._drawBar(ctx, tf.x, tf.y + radius + 10, radius * 2.4, 3,
           sp.current / sp.max, '#4488cc')
       }

@@ -60,16 +60,16 @@ export class MovementSystem implements System {
       if (hasInput) {
         tf.vx = ix * mv.speed
         tf.vy = iy * mv.speed
-        // 朝向跟随移动方向
-        tf.rotation = Math.atan2(iy, ix)
       } else {
         // 卸力：惯性衰减
         tf.vx *= mv.friction
         tf.vy *= mv.friction
-        // 速度极小时归零，防止永久漂移
         if (Math.abs(tf.vx) < 0.5) tf.vx = 0
         if (Math.abs(tf.vy) < 0.5) tf.vy = 0
       }
+
+      // 朝向始终面朝鼠标（全向移动）
+      tf.rotation = Math.atan2(input.mouseY - tf.y, input.mouseX - tf.x)
 
       // ── 5. 积分位置 + 边界钳位 ──
       tf.x += tf.vx * dt

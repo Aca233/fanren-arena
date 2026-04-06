@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#051c0a"/>
+      <stop offset="25%" stop-color="#1b7a3b"/>
+      <stop offset="50%" stop-color="#8af2a4"/>
+      <stop offset="75%" stop-color="#1b7a3b"/>
+      <stop offset="100%" stop-color="#051c0a"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8a6d1c"/>
+      <stop offset="30%" stop-color="#fced9d"/>
+      <stop offset="50%" stop-color="#e8c751"/>
+      <stop offset="80%" stop-color="#a68117"/>
+      <stop offset="100%" stop-color="#403004"/>
+    </linearGradient>
+    <linearGradient id="handleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#031206"/>
+      <stop offset="40%" stop-color="#239e4a"/>
+      <stop offset="60%" stop-color="#42b864"/>
+      <stop offset="100%" stop-color="#031206"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="transparent"/>
+  <g transform="translate(400, 400) rotate(-45)">
+    <path d="M 0 -340 L 16 -240 L 22 -40 L -22 -40 L -16 -240 Z" fill="url(#bladeGrad)" stroke="#42b864" stroke-width="1.5"/>
+    <path d="M -18 -260 Q 0 -250 18 -260 M -20 -190 Q 0 -180 20 -190 M -21 -120 Q 0 -110 21 -120 M -22 -60 Q 0 -50 22 -60" fill="none" stroke="#a2ebb4" stroke-width="2.5" opacity="0.6"/>
+    <path d="M -18 -260 Q 0 -270 18 -260 M -20 -190 Q 0 -200 20 -190 M -21 -120 Q 0 -130 21 -120 M -22 -60 Q 0 -70 22 -60" fill="none" stroke="#051c0a" stroke-width="2" opacity="0.6"/>
+    <line x1="0" y1="-340" x2="0" y2="-40" stroke="#cbfadc" stroke-width="3" opacity="0.8"/>
+    <ellipse cx="0" cy="-255" rx="3" ry="8" fill="#e8fceb" opacity="0.8"/>
+    <ellipse cx="0" cy="-185" rx="3.5" ry="9" fill="#e8fceb" opacity="0.8"/>
+    <ellipse cx="0" cy="-115" rx="4" ry="10" fill="#e8fceb" opacity="0.8"/>
+    <ellipse cx="0" cy="-55" rx="4" ry="10" fill="#e8fceb" opacity="0.8"/>
+    <ellipse cx="0" cy="-40" rx="48" ry="14" fill="url(#goldGrad)"/>
+    <ellipse cx="0" cy="-42" rx="43" ry="11" fill="#0a3a1b"/>
+    <ellipse cx="0" cy="-42" rx="38" ry="8" fill="url(#bladeGrad)"/>
+    <ellipse cx="0" cy="-42" rx="26" ry="6" fill="none" stroke="url(#goldGrad)" stroke-width="2"/>
+    <path d="M -14 -35 L 14 -35 L 19 140 L -19 140 Z" fill="url(#handleGrad)"/>
+    <g fill="none">
+      <path d="M -15 10 Q 0 16 15 10" stroke="#72d689" stroke-width="3"/>
+      <path d="M -15 10 Q 0 4 15 10" stroke="#031206" stroke-width="2"/>
+      <path d="M -16 55 Q 0 61 16 55" stroke="#72d689" stroke-width="3"/>
+      <path d="M -16 55 Q 0 49 16 55" stroke="#031206" stroke-width="2"/>
+      <path d="M -18 100 Q 0 106 18 100" stroke="#72d689" stroke-width="3"/>
+      <path d="M -18 100 Q 0 94 18 100" stroke="#031206" stroke-width="2"/>
+    </g>
+    <g fill="none" stroke="#72d689" stroke-width="1.5" opacity="0.5">
+      <path d="M -10 -20 Q 0 0 10 -30"/>
+      <path d="M -12 30 Q 0 50 12 20"/>
+      <path d="M -14 75 Q 0 95 14 65"/>
+      <path d="M -16 120 Q 0 140 16 110"/>
+    </g>
+    <path d="M -19 140 L 19 140 L 32 175 L -32 175 Z" fill="url(#handleGrad)"/>
+    <ellipse cx="0" cy="175" rx="32" ry="10" fill="url(#goldGrad)"/>
+    <ellipse cx="0" cy="175" rx="26" ry="7" fill="#031206"/>
+    <ellipse cx="0" cy="175" rx="14" ry="4" fill="url(#goldGrad)"/>
+  </g>
+</svg>
