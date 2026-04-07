@@ -128,6 +128,28 @@ export class SwordFormationSystem implements System {
         return true
       })
     }
+
+    // ── 合并动画 tick：分身飞回原剑后销毁 ──
+    const merging = (world.globals._mergingSwords ?? []) as { id: number; targetId: number }[]
+    if (merging.length > 0) {
+      world.globals._mergingSwords = merging.filter(entry => {
+        if (!world.isAlive(entry.id)) return false
+        const stf = world.getComponent<TransformComponent>(entry.id, 'Transform')
+        const targetTf = world.getComponent<TransformComponent>(entry.targetId, 'Transform')
+        if (!stf || !targetTf) { world.destroyEntity(entry.id); return false }
+
+        const mdx = targetTf.x - stf.x, mdy = targetTf.y - stf.y
+        if (mdx * mdx + mdy * mdy < 10 * 10) {
+          world.destroyEntity(entry.id)
+          return false
+        }
+        const md = Math.sqrt(mdx * mdx + mdy * mdy)
+        stf.x += (mdx / md) * 400 * dt
+        stf.y += (mdy / md) * 400 * dt
+        stf.rotation = Math.atan2(mdy, mdx)
+        return true
+      })
+    }
   }
 
   /** 祭出 N 剑 */
@@ -239,13 +261,13 @@ export class SwordFormationSystem implements System {
       }))
       .addComponent(sid, createTag('artifact', ['wood', 'lightning', 'evil_warding', 'natal']))
       .addComponent(sid, createBoid('qingzhu_72', {
-        separationWeight: 1.5,
+        separationWeight: 4.0,
         alignmentWeight: 1.0,
         cohesionWeight: 0.8,
         maxSpeed: 350,
         maxForce: 500,
         perceptionRadius: 60,
-        separationRadius: 15,
+        separationRadius: 30,
         targetId: -1,
         seekWeight: 2.5,
       }))
@@ -357,6 +379,8 @@ export class SwordFormationSystem implements System {
       }
       // 布阵期间无敌
       world.addComponent(sf.ownerId, createInvincible(sf.deployDuration, 'skill'))
+      // 大庚剑阵自动触发分光剑影诀
+      world.globals._domainAutoSplit = true
     }
   }
 
@@ -376,27 +400,54 @@ export class SwordFormationSystem implements System {
       const render = world.getComponent<RenderComponent>(sid, 'Render')
 
       if (i < guardCount) {
-        // 护体剑：环绕主人
+        // 护体剑：多圈环绕主人（lerp 平滑跟随）
         if (render) render.visible = true
         if (boid) boid.targetId = -1
 
-        const baseAngle = (i / guardCount) * Math.PI * 2
-        const orbit = baseAngle + Date.now() * 0.003
-        const targetX = ownerTf.x + Math.cos(orbit) * sf.guardRadius
-        const targetY = ownerTf.y + Math.sin(orbit) * sf.guardRadius
+        const spacing = 32
+        const perRing = Math.max(4, Math.floor((2 * Math.PI * (sf.guardRadius)) / spacing))
+
+        // 只有当前圈满了才开下一圈
+        const fullRings = Math.floor(guardCount / perRing)
+        const lastRingCount = guardCount - fullRings * perRing
+        let ringIdx: number, posInRing: number, ringTotal: number
+        if (i < fullRings * perRing) {
+          ringIdx = Math.floor(i / perRing)
+          posInRing = i % perRing
+          ringTotal = perRing
+        } else {
+          ringIdx = fullRings
+          posInRing = i - fullRings * perRing
+          ringTotal = lastRingCount
+        }
+        const ringR = sf.guardRadius + ringIdx * 35
+
+        const baseAngle = (posInRing / ringTotal) * Math.PI * 2
+        // 奇偶圈反向旋转，速度均衡
+        const dir = ringIdx % 2 === 0 ? 1 : -1
+        const orbit = baseAngle + Date.now() * 0.004 * dir
+
+        const targetX = ownerTf.x + Math.cos(orbit) * ringR
+        const targetY = ownerTf.y + Math.sin(orbit) * ringR
 
         const dx = targetX - stf.x
         const dy = targetY - stf.y
-        const distToTarget = Math.sqrt(dx * dx + dy * dy)
-
-        const lerpS = distToTarget > sf.guardRadius * 3 ? 20 : 12
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const lerpS = dist > ringR * 3 ? 20 : 12
         stf.x += dx * lerpS * dt
         stf.y += dy * lerpS * dt
         stf.vx = dx * lerpS
         stf.vy = dy * lerpS
 
-        const vel = Math.sqrt(stf.vx * stf.vx + stf.vy * stf.vy)
-        if (vel > 5) stf.rotation = Math.atan2(stf.vy, stf.vx)
+        if (ringIdx % 2 === 1) {
+          // 偶数圈：剑头直接朝鼠标
+          const inp = world.globals.input as InputState | undefined
+          if (inp) stf.rotation = Math.atan2(inp.mouseY - stf.y, inp.mouseX - stf.x)
+        } else {
+          // 奇数圈：沿切线方向
+          const vel = Math.sqrt(stf.vx * stf.vx + stf.vy * stf.vy)
+          if (vel > 5) stf.rotation = Math.atan2(stf.vy, stf.vx)
+        }
       } else {
         // 闲置剑：跟在主人背后（相对朝向）松散浮动
         if (render) render.visible = true
@@ -471,18 +522,43 @@ export class SwordFormationSystem implements System {
       if (render) render.visible = true
       if (boid) boid.targetId = -1
 
-      // ── 护体剑：环绕主人 ──
+      // ── 护体剑：多圈环绕（同 guardian 风格）──
       if (i < guardCount && ownerTf) {
-        const baseAngle = (i / Math.max(1, guardCount)) * Math.PI * 2
-        const orbit = baseAngle + now * 0.003
-        const tx = ownerTf.x + Math.cos(orbit) * sf.guardRadius
-        const ty = ownerTf.y + Math.sin(orbit) * sf.guardRadius
-        stf.x += (tx - stf.x) * 12 * dt
-        stf.y += (ty - stf.y) * 12 * dt
-        stf.vx = (tx - stf.x) * 12
-        stf.vy = (ty - stf.y) * 12
-        const vel = Math.sqrt(stf.vx * stf.vx + stf.vy * stf.vy)
-        if (vel > 5) stf.rotation = Math.atan2(stf.vy, stf.vx)
+        const spacing = 32
+        const perRing = Math.max(4, Math.floor((2 * Math.PI * sf.guardRadius) / spacing))
+        const fullRings = Math.floor(guardCount / perRing)
+        const lastRingCount = guardCount - fullRings * perRing
+        let rIdx: number, posInR: number, rTotal: number
+        if (i < fullRings * perRing) {
+          rIdx = Math.floor(i / perRing)
+          posInR = i % perRing
+          rTotal = perRing
+        } else {
+          rIdx = fullRings
+          posInR = i - fullRings * perRing
+          rTotal = lastRingCount
+        }
+        const ringR = sf.guardRadius + rIdx * 35
+        const baseAngle = (posInR / rTotal) * Math.PI * 2
+        const dir = rIdx % 2 === 0 ? 1 : -1
+        const speed = rIdx % 2 === 0 ? 0.003 * (1 + rIdx * 0.2) : 0.003
+        const orbit = baseAngle + now * speed * dir
+        const tx = ownerTf.x + Math.cos(orbit) * ringR
+        const ty = ownerTf.y + Math.sin(orbit) * ringR
+        const dx = tx - stf.x, dy = ty - stf.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const lerpS = dist > ringR * 3 ? 20 : 12
+        stf.x += dx * lerpS * dt
+        stf.y += dy * lerpS * dt
+        stf.vx = dx * lerpS
+        stf.vy = dy * lerpS
+        if (rIdx % 2 === 1) {
+          const inp = world.globals.input as InputState | undefined
+          if (inp) stf.rotation = Math.atan2(inp.mouseY - stf.y, inp.mouseX - stf.x)
+        } else {
+          const vel = Math.sqrt(stf.vx * stf.vx + stf.vy * stf.vy)
+          if (vel > 5) stf.rotation = Math.atan2(stf.vy, stf.vx)
+        }
         continue
       }
 
@@ -579,9 +655,12 @@ export class SwordFormationSystem implements System {
       case 'collapsing': this._domainCollapse(world, sf, dt); break
     }
 
-    // 写入渲染数据
+    // 写入渲染数据（active 时用收缩半径）
+    const renderRadius = sf.domainPhase === 'active'
+      ? sf.domainRadius * (1 - Math.min(1, sf.domainTimer / sf.activeDuration) * 0.7)
+      : sf.domainRadius
     world.globals.domainCircle = sf.domainPhase !== 'none' ? {
-      x: cx, y: cy, radius: sf.domainRadius,
+      x: cx, y: cy, radius: renderRadius,
       timer: sf.domainTimer, phase: sf.domainPhase,
       swordSilks: sf.swordSilks,
       deployDuration: sf.deployDuration,
@@ -640,6 +719,10 @@ export class SwordFormationSystem implements System {
       sf.domainPhase = 'active'
       sf.domainTimer = 0
       sf.slashTimer = 0
+      // 自动分光剑影诀
+      if (world.globals._domainAutoSplit) {
+        world.globals._domainAutoSplit = false
+      }
     }
   }
 
@@ -698,12 +781,16 @@ export class SwordFormationSystem implements System {
   ): void {
     sf.darkenAlpha = 0.45
 
+    // ── 庚精风暴：阵法逐步收缩（剑丝往中间一合） ──
+    const shrinkProgress = Math.min(1, sf.domainTimer / sf.activeDuration)
+    const currentRadius = sf.domainRadius * (1 - shrinkProgress * 0.7) // 收缩到 30%
+
     // ── 飞剑保持阵位，缓慢旋转（尊重 guardRatio）──
     const ownerTf = world.getComponent<TransformComponent>(sf.ownerId, 'Transform')
     const guardCount = Math.round(sf.swordIds.length * sf.guardRatio)
     const domainSwords = sf.swordIds.slice(guardCount)
-    const positions = this._calcDomainPositions(domainSwords.length, cx, cy, sf.domainRadius)
-    const rotOffset = sf.domainTimer * 0.15
+    const positions = this._calcDomainPositions(domainSwords.length, cx, cy, currentRadius)
+    const rotOffset = sf.domainTimer * (0.15 + shrinkProgress * 0.8) // 越收缩转越快
 
     for (let i = 0; i < sf.swordIds.length; i++) {
       const sid = sf.swordIds[i]
@@ -897,10 +984,13 @@ export class SwordFormationSystem implements System {
         if (cd > 0) continue
 
         const hp = world.getComponent<HealthComponent>(eid, 'Health')!
-        let dmg = 15 // 单剑基础伤害
+        const gleamBonus = (world.globals._swordGleamBonus ?? 1) as number
+        const splitMul = (world.globals._swordDmgMultiplier ?? 1) as number
+        let dmg = 15 * gleamBonus * splitMul // 基础 × 剑芒 × 分光
+        const isDemonGhost = tag.tags.has('demon') || tag.tags.has('ghost')
 
         // 辟邪神雷克制加成
-        if (tag.tags.has('demon') || tag.tags.has('ghost')) dmg *= 3
+        if (isDemonGhost) dmg *= 3
 
         hp.current = Math.max(0, hp.current - dmg)
         world.globals[cdKey] = 0.2 // 0.2s 冷却
@@ -911,6 +1001,13 @@ export class SwordFormationSystem implements System {
         etf.vy += (dy / hitR) * pushStr
         stf.vx -= (dx / hitR) * pushStr * 0.5
         stf.vy -= (dy / hitR) * pushStr * 0.5
+
+        // ── 辟邪神雷特效（在敌人身上爆发闪电）──
+        if (isDemonGhost) {
+          const lightnings = (world.globals._swordLightnings ?? []) as { x: number; y: number; life: number }[]
+          lightnings.push({ x: etf.x, y: etf.y, life: 0.25 })
+          world.globals._swordLightnings = lightnings
+        }
       }
     }
 

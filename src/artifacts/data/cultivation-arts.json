@@ -1,0 +1,40 @@
+[
+  {
+    "cultivationId": "qingyuan_sword_art",
+    "name": "青元剑诀",
+    "element": "wood",
+    "maxLevel": 13,
+    "levels": [
+      { "range": [1, 3], "name": "青元剑芒", "tier": "qi",
+        "passive": { "type": "sword_gleam", "damageRatio": 0.02, "damageType": "true" },
+        "description": "剑气附带微量真伤，随等级增长" },
+      { "range": [4, 6], "name": "护体剑盾", "tier": "foundation",
+        "skill": { "id": "sword_shield", "cost": 0.15, "cooldown": 10, "duration": 5,
+          "effect": "deflect_projectiles", "description": "凝聚剑气护盾，反弹来袭弹幕" } },
+      { "range": [7, 9], "name": "剑影分光术", "tier": "core",
+        "skill": { "id": "shadow_split", "cost": 0.1, "cooldown": 3,
+          "effect": "projectile_multiply_16", "damageRatio": 0.7,
+          "description": "发射16道剑影分身，各造成70%伤害" } },
+      { "range": [10, 13], "name": "大庚剑阵", "tier": "nascent",
+        "skill": { "id": "dageng_array", "cost": 0.5, "drainPerSec": 0.05,
+          "requires": "qingzhu_sword_formation",
+          "effect": "domain_sword_silk_raycast",
+          "description": "需青竹蜂云剑。展开剑丝领域，化剑为丝切割万物" } }
+    ],
+    "auxiliary": {
+      "name": "三转重元功",
+      "id": "heavy_origin",
+      "maxTurns": 3,
+      "bonuses": [
+        { "turn": 1, "manaMultiplier": 2.0, "density": 1.5 },
+        { "turn": 2, "manaMultiplier": 4.0, "density": 2.5 },
+        { "turn": 3, "manaMultiplier": 8.0, "density": 4.0 }
+      ]
+    },
+    "synergy": {
+      "targetArtifact": "qingzhu_sword",
+      "effect": "reduce_control_cost",
+      "value": 0.5
+    }
+  }
+]

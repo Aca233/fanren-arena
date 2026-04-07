@@ -144,6 +144,13 @@ export class VFXSystem implements System {
       return lc.life > 0
     })
 
+    // 飞剑辟邪神雷爆发点衰减
+    const swordLightnings = (world.globals._swordLightnings ?? []) as { x: number; y: number; life: number }[]
+    world.globals._swordLightnings = swordLightnings.filter(sl => {
+      sl.life -= dt
+      return sl.life > 0
+    })
+
     // ── 渲染 ──
     if (this.ctx) {
       // 震动偏移
@@ -152,10 +159,28 @@ export class VFXSystem implements System {
       this.particles.render(this.ctx)
       this.dmgNumbers.render(this.ctx)
 
-      // 辟邪神雷闪电链
+      // 辟邪神雷闪电链（克制系统触发）
       for (const lc of this._lightningChains) {
         const alpha = lc.life / lc.maxLife
         this._drawLightning(this.ctx, lc.x1, lc.y1, lc.x2, lc.y2, alpha)
+      }
+
+      // 飞剑辟邪神雷爆发（在敌人身上放射状闪电）
+      const swordLtn = (world.globals._swordLightnings ?? []) as { x: number; y: number; life: number }[]
+      for (const sl of swordLtn) {
+        const alpha = sl.life / 0.25
+        const count = 4 + Math.floor(Math.random() * 3)
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2
+          const len = 20 + Math.random() * 30
+          this._drawLightning(
+            this.ctx,
+            sl.x, sl.y,
+            sl.x + Math.cos(angle) * len,
+            sl.y + Math.sin(angle) * len,
+            alpha,
+          )
+        }
       }
 
       this.ctx.restore()
